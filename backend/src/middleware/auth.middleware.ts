@@ -1,6 +1,6 @@
 
 import { Request, Response, NextFunction } from "express";
-const jwt = require('jsonwebtoken');
+import jwt from "jsonwebtoken";
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -15,10 +15,20 @@ const authMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunc
     return res.status(401).json({ message: "Unauthorized" });
   }
 
-  const token = authHeader.split(" ")[1];
+  const token = authHeader.slice("Bearer ".length).trim();
+  const secret = process.env.JWT_SECRET;
+
+  if (!token || !secret) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
 
   try {
-    const decoded = jwt.verify(token, 'process.env.JWT_SECRET' as string) as { id: string };
+    const decoded = jwt.verify(token, secret) as jwt.JwtPayload & { id?: string };
+
+    if (!decoded.id) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
     req.user = { id: decoded.id };
     next();
   } catch (error) {

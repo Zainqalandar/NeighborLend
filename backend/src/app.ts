@@ -8,3 +8,5 @@ const app = express();
 app.use(core());
 app.use(express.json());
 app.use('/api/auth', authRouter);
+
+export default app;

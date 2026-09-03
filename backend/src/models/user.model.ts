@@ -26,11 +26,7 @@ const userSchema = new Schema<IUser>(
       required: true,
       type: String,
       minlength: 6,
-      select: false,
-      match: [
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/,
-        "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character",
-      ],
+      select: false
     },
     phone: String,
     address: String,

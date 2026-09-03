@@ -1,0 +1,116 @@
+# NeighborLend Backend — HTTP Status Codes
+
+Backend me har response ke saath HTTP status code bhejna hai. Status code se frontend ko foran samajh aa jata hai ke request successful thi ya kis wajah se fail hui.
+
+## Success Status Codes (2xx)
+
+| Code | Name | Kab use karna hai | Example message |
+|---|---|---|---|
+| `200` | OK | Request successfully complete ho jaye | `Item fetched successfully` |
+| `201` | Created | Naya user, item ya request create ho | `User registered successfully` |
+| `202` | Accepted | Request receive ho gayi ho lekin processing baad me ho | `Request accepted for processing` |
+| `204` | No Content | Delete/update successful ho aur response body na bhejni ho | No response body |
+
+## Client Error Status Codes (4xx)
+
+Ye errors frontend/user ki request ya permissions ki wajah se hote hain.
+
+| Code | Name | Kab use karna hai | Example message |
+|---|---|---|---|
+| `400` | Bad Request | Request ka data missing ya invalid ho | `Name, email and password are required` |
+| `401` | Unauthorized | User login nahi hai ya JWT token missing/invalid hai | `Please login first` |
+| `403` | Forbidden | User login hai lekin is action ki permission nahi | `Only the item owner can edit this item` |
+| `404` | Not Found | User, item ya request database me na mile | `Item not found` |
+| `405` | Method Not Allowed | Endpoint par wrong HTTP method use ho | `POST method is not allowed here` |
+| `409` | Conflict | Duplicate ya conflicting data ho | `Email already exists` |
+| `422` | Unprocessable Entity | Format sahi ho lekin validation fail ho | `Password must be at least 6 characters` |
+| `429` | Too Many Requests | User ne bohat zyada requests short time me bheji hon | `Too many requests, try again later` |
+
+## Server Error Status Codes (5xx)
+
+Ye errors backend, database ya server infrastructure ki wajah se hote hain.
+
+| Code | Name | Kab use karna hai | Example message |
+|---|---|---|---|
+| `500` | Internal Server Error | Backend me unexpected error aa jaye | `Something went wrong on the server` |
+| `501` | Not Implemented | Feature abhi backend me bani nahi | `This feature is not implemented yet` |
+| `502` | Bad Gateway | Backend ko kisi upstream service se invalid response mile | `External service returned an invalid response` |
+| `503` | Service Unavailable | Server ya database temporarily available na ho | `Service temporarily unavailable` |
+| `504` | Gateway Timeout | Upstream service ka response time par na aaye | `External service request timed out` |
+| `505` | HTTP Version Not Supported | Client ne unsupported HTTP version use ki ho | `HTTP version is not supported` |
+
+**Important:** Generic server error ke liye `505` nahi, `500` use hota hai. `505` sirf unsupported HTTP version ke liye hai.
+
+## Standard Error Response Format
+
+Har error response ko same format me bhejo:
+
+```json
+{
+  "success": false,
+  "statusCode": 404,
+  "message": "Item not found",
+  "error": "ITEM_NOT_FOUND"
+}
+```
+
+Success response ka format:
+
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "message": "Item fetched successfully",
+  "data": {}
+}
+```
+
+## NeighborLend ke Common Examples
+
+```ts
+// Signup successful
+return res.status(201).json({
+  success: true,
+  statusCode: 201,
+  message: "User registered successfully",
+  data: user,
+});
+
+// Invalid input
+return res.status(400).json({
+  success: false,
+  statusCode: 400,
+  message: "Email and password are required",
+  error: "VALIDATION_ERROR",
+});
+
+// Token missing/invalid
+return res.status(401).json({
+  success: false,
+  statusCode: 401,
+  message: "Please login first",
+  error: "UNAUTHORIZED",
+});
+
+// User owner nahi hai
+return res.status(403).json({
+  success: false,
+  statusCode: 403,
+  message: "You do not have permission for this action",
+  error: "FORBIDDEN",
+});
+
+// Database/server ka unexpected error
+return res.status(500).json({
+  success: false,
+  statusCode: 500,
+  message: "Something went wrong on the server",
+  error: "INTERNAL_SERVER_ERROR",
+});
+```
+
+## Quick Rule
+
+- `2xx` = kaam successful
+- `4xx` = client/user ki request me problem
+- `5xx` = backend/server ki problem

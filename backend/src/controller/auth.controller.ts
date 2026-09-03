@@ -10,17 +10,27 @@ const register = async (req: Request, res: Response) => {
 
     if (!name || !email || !password) {
       return res.status(HTTP_STATUS.BAD_REQUEST).json({
-        message: "All fileds are required",
+        message: "Name, email and password are required",
       });
     }
 
-    const existingUser = await User.findOne(email);
+    const existingUser = await User.findOne({ email });
 
     if (existingUser) {
       return res.status(HTTP_STATUS.BAD_REQUEST).json({
         message: "User already exist",
       });
     }
+
+    const passwordRegex =
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/;
+
+  if (!passwordRegex.test(password)) {
+  return res.status(400).json({
+    message:
+      "Password must contain uppercase, lowercase, number and special character",
+  });
+}
 
     const hashed = await bcrypt.hash(password, 10);
 
@@ -36,13 +46,21 @@ const register = async (req: Request, res: Response) => {
       expiresIn: "1h",
     });
 
-    console.log("Email token: ", token);
-
     return res.status(HTTP_STATUS.CREATED).json({
-      message: "User created successfully",
+      message: "User registered successfully",
+      data: {
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          address: user.address,
+        },
+        token,
+      },
     });
   } catch (error) {
-    console.error(error);
+    console.error('Me: ',error);
     return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
       message: "Internal server error",
     });
@@ -60,7 +78,7 @@ const login = async (req: Request, res: Response ) => {
 			});
 		}
 
-    const user = await User.findOne(email).select('+password')
+    const user = await User.findOne({ email }).select('+password')
 
     if(!user){
       return res.status(HTTP_STATUS.BAD_REQUEST).json({
@@ -77,6 +95,24 @@ const login = async (req: Request, res: Response ) => {
 				message: 'Invalid credentials',
 			});
 		}
+
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET as string, {
+      expiresIn: "1h",
+    });
+
+    return res.status(HTTP_STATUS.OK).json({
+      message: "Login successful",
+      data: {
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          address: user.address,
+        },
+        token,
+      },
+    });
     
   } catch (error) {
     console.error(error);
