@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose'
 
 interface IItem extends Document {
-  owner: mongoose.Schema.Types.ObjectId;
+  owner: mongoose.Types.ObjectId;
   title: string;
   description: string;
   category: string;

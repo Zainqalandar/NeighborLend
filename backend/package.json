@@ -4,11 +4,13 @@
   "description": "This is Purley MERN Stack Practice Project",
   "main": "server.js",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/server.ts"
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "seed:items": "ts-node --transpile-only src/scripts/seed-items.ts"
   },
   "author": "Syed Zain Qalandar",
   "license": "ISC",
   "dependencies": {
+    "@google/genai": "^2.21.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
