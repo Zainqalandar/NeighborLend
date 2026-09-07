@@ -43,7 +43,7 @@ const getAllItems = async (req: Request, res: Response) => {
     const search = typeof req.query.search === "string" ? req.query.search.trim() : undefined;
     const status = typeof req.query.status === "string" ? req.query.status.trim() : undefined;
     const page = Math.max(Number(req.query.page) || 1, 1);
-    const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 50);
+    const limit = Math.min(Math.max(Number(req.query.limit) || 6, 1), 50);
 
     if (status && status !== "all" && !ITEM_STATUSES.includes(status as typeof ITEM_STATUSES[number])) {
       return res.status(HTTP_STATUS.BAD_REQUEST).json({

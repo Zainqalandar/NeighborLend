@@ -35,6 +35,8 @@ export default function ItemsPage() {
   const [search, setSearch] = React.useState("");
   const [category, setCategory] = React.useState("");
   const [categoryReady, setCategoryReady] = React.useState(false);
+  const [page, setPage] = React.useState(1);
+  const [totalPages, setTotalPages] = React.useState(1);
   const [searchInput, setSearchInput] = React.useState("");
   const [form, setForm] = React.useState<ItemForm>(emptyForm);
   const [editingId, setEditingId] = React.useState<string | null>(null);
@@ -47,15 +49,16 @@ export default function ItemsPage() {
     setLoading(true);
     try {
       const response = await api.get("/items", {
-        params: { search: search || undefined, category: category || undefined, limit: 50 },
+        params: { search: search || undefined, category: category || undefined, page, limit: 6 },
       });
       setItems(response.data?.data ?? []);
+      setTotalPages(Math.max(response.data?.pagination?.totalPages ?? 1, 1));
     } catch (error) {
       notifyError(getApiErrorMessage(error, "Could not load items."));
     } finally {
       setLoading(false);
     }
-  }, [category, notifyError, search]);
+  }, [category, notifyError, page, search]);
 
   const loadMyItems = React.useCallback(async () => {
     if (!isAuthenticated) {
@@ -79,6 +82,7 @@ export default function ItemsPage() {
   React.useEffect(() => {
     const categoryFromUrl = new URLSearchParams(window.location.search).get("category")?.trim();
     setCategory(categoryFromUrl || "");
+    setPage(1);
     setCategoryReady(true);
   }, []);
 
@@ -245,9 +249,9 @@ export default function ItemsPage() {
         )}
 
         <section className="mt-10">
-          <form onSubmit={(event) => { event.preventDefault(); setSearch(searchInput.trim()); }} className="flex flex-col gap-3 sm:flex-row">
+          <form onSubmit={(event) => { event.preventDefault(); setSearch(searchInput.trim()); setPage(1); }} className="flex flex-col gap-3 sm:flex-row">
             <input value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="Search items..." className="h-12 flex-1 rounded-xl border border-[#d6e1d8] bg-white px-4 outline-none focus:border-[#185c46]" />
-            <input value={category} onChange={(event) => setCategory(event.target.value)} placeholder="Filter category" className="h-12 rounded-xl border border-[#d6e1d8] bg-white px-4 outline-none focus:border-[#185c46] sm:w-56" />
+            <input value={category} onChange={(event) => { setCategory(event.target.value); setPage(1); }} placeholder="Filter category" className="h-12 rounded-xl border border-[#d6e1d8] bg-white px-4 outline-none focus:border-[#185c46] sm:w-56" />
             <button type="submit" className="h-12 rounded-xl bg-[#e86e43] px-6 text-sm font-semibold text-white cursor-pointer">Search</button>
           </form>
 
@@ -274,6 +278,14 @@ export default function ItemsPage() {
               </article>
             ))}
           </div>
+
+          {!loading && items.length > 0 && totalPages > 1 && (
+            <div className="mt-8 flex items-center justify-center gap-4">
+              <button type="button" disabled={page === 1} onClick={() => setPage((currentPage) => currentPage - 1)} className="rounded-xl border border-[#cddbd0] px-4 py-2 text-sm font-semibold text-[#285347] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40">Previous</button>
+              <span className="text-sm font-semibold text-[#708178]">Page {page} of {totalPages}</span>
+              <button type="button" disabled={page === totalPages} onClick={() => setPage((currentPage) => currentPage + 1)} className="rounded-xl border border-[#cddbd0] px-4 py-2 text-sm font-semibold text-[#285347] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40">Next</button>
+            </div>
+          )}
         </section>
 
         {isAuthenticated && myItems.length > 0 && (
