@@ -39,7 +39,8 @@ export default function Navbar() {
 
         <nav className="hidden items-center gap-8 text-sm font-medium text-[#587067] md:flex" aria-label="Main navigation">
           <Link href="/" className="transition-colors hover:text-[#185c46]">Home</Link>
-          <Link href="/#items" className="transition-colors hover:text-[#185c46]">Browse items</Link>
+          <Link href="/items" className="transition-colors hover:text-[#185c46]">Browse items</Link>
+          {isAuthenticated && <Link href="/requests" className="transition-colors hover:text-[#185c46]">Requests</Link>}
           <Link href="/#how-it-works" className="transition-colors hover:text-[#185c46]">How it works</Link>
         </nav>
 

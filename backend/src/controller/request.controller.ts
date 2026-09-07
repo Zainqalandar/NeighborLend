@@ -48,6 +48,8 @@ const createRequest = async (req: Request, res: Response) => {
     });
 
     await newRequest.save();
+    item.status = "requested";
+    await item.save();
 
     return res.status(HTTP_STATUS.CREATED).json({ message: "Request created successfully", data: newRequest });
   } catch (error) {
@@ -76,6 +78,27 @@ const getMyRequests = async (req: Request, res: Response) => {
   } catch (error) {
     return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
       message: "Error retrieving your requests",
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+};
+
+const getReceivedRequests = async (req: Request, res: Response) => {
+  try {
+    const ownerId = getUserObjectId(req);
+    if (!ownerId) return res.status(HTTP_STATUS.UNAUTHORIZED).json({ message: "Unauthorized" });
+
+    const requests = await RequestModel.find({ owner: ownerId } as any)
+      .populate("item", "title description category imageUrl status")
+      .populate("borrower", "name email phone address");
+
+    return res.status(HTTP_STATUS.OK).json({
+      message: "Received requests retrieved successfully",
+      data: requests,
+    });
+  } catch (error) {
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      message: "Error retrieving received requests",
       error: error instanceof Error ? error.message : String(error),
     });
   }
@@ -111,7 +134,7 @@ const approveRequest = async (req: Request, res: Response) => {
     // Update the item status to requested
     const item = await Item.findById(request.item);
     if (item) {
-      item.status = "requested";
+      item.status = "borrowed";
       await item.save();
     }
 
@@ -149,6 +172,12 @@ const rejectRequest = async (req: Request, res: Response) => {
     // Update the request status to rejected
     request.status = "rejected";
     await request.save();
+
+    const item = await Item.findById(request.item);
+    if (item) {
+      item.status = "available";
+      await item.save();
+    }
 
     return res.status(HTTP_STATUS.OK).json({ message: "Request rejected successfully", data: request });
   } catch (error) {
@@ -202,4 +231,4 @@ const returnRequest = async (req: Request, res: Response) => {
   }
 };
 
-export { createRequest, getMyRequests, approveRequest, rejectRequest, returnRequest };
+export { createRequest, getMyRequests, getReceivedRequests, approveRequest, rejectRequest, returnRequest };
