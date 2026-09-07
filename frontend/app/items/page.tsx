@@ -5,7 +5,7 @@ import React from "react";
 import api from "@/utils/axiosInstance";
 import { getApiErrorMessage } from "@/utils/api-error";
 import { hasAuthToken, subscribeToAuthChanges } from "@/utils/auth";
-import type { Item } from "@/types/api";
+import { getPersonName, type Item } from "@/types/api";
 import { useNotification } from "@/context/notification-context";
 import { useSyncExternalStore } from "react";
 
@@ -39,6 +39,7 @@ export default function ItemsPage() {
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
+  const [enhancing, setEnhancing] = React.useState(false);
 
   const loadItems = React.useCallback(async () => {
     setLoading(true);
@@ -128,6 +129,7 @@ export default function ItemsPage() {
       notifyError("Add a description first.");
       return;
     }
+    setEnhancing(true);
     try {
       const response = await api.post("/items/ai-enhance", { description: form.description });
       setForm((previous) => ({
@@ -137,6 +139,8 @@ export default function ItemsPage() {
       success("Description enhanced.");
     } catch (error) {
       notifyError(getApiErrorMessage(error, "Could not enhance the description."));
+    } finally {
+      setEnhancing(false);
     }
   };
 
@@ -178,9 +182,12 @@ export default function ItemsPage() {
               <input required type="url" name="imageUrl" value={form.imageUrl} onChange={handleFormChange} placeholder="Image URL" className="h-12 rounded-xl border border-[#d6e1d8] px-4 outline-none focus:border-[#185c46] md:col-span-2" />
               <div className="md:col-span-2">
                 <textarea required name="description" value={form.description} onChange={handleFormChange} placeholder="Describe the item" rows={4} className="w-full rounded-xl border border-[#d6e1d8] px-4 py-3 outline-none focus:border-[#185c46]" />
-                <button type="button" onClick={handleEnhance} className="mt-2 text-sm font-semibold text-[#e86e43]">✨ Auto-enhance description</button>
+                <button type="button" onClick={handleEnhance} disabled={enhancing} aria-busy={enhancing} className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-[#e86e43] disabled:cursor-not-allowed disabled:opacity-60">
+                  {enhancing && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[#e86e43]/30 border-t-[#e86e43]" aria-hidden="true" />}
+                  {enhancing ? "Enhancing..." : "✨ Auto-enhance description"}
+                </button>
               </div>
-              <button disabled={saving} type="submit" className="h-12 rounded-xl bg-[#185c46] text-sm font-semibold text-white disabled:opacity-60 md:col-span-2">{saving ? "Saving..." : editingId ? "Update item" : "List item"}</button>
+              <button disabled={saving} type="submit" className="h-12 rounded-xl cursor-pointer bg-[#185c46] text-sm font-semibold text-white disabled:opacity-60 md:col-span-2">{saving ? "Saving..." : editingId ? "Update item" : "List item"}</button>
             </form>
           </section>
         )}
@@ -199,8 +206,18 @@ export default function ItemsPage() {
                 <div className="p-5">
                   <div className="flex items-start justify-between gap-3"><p className="text-xs font-semibold uppercase tracking-[0.13em] text-[#e86e43]">{item.category}</p><span className="rounded-full bg-[#eff7e2] px-2.5 py-1 text-xs font-semibold text-[#47705d]">{item.status}</span></div>
                   <h2 className="mt-2 text-xl font-semibold text-[#163d31]">{item.title}</h2>
+                  <div className="mt-3 flex items-center gap-2.5">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#dcece7] text-sm font-bold text-[#185c46]">{getPersonName(item.owner).charAt(0).toUpperCase()}</span>
+                    <div>
+                      <p className="text-xs text-[#708178]">Created by</p>
+                      <p className="text-sm font-semibold text-[#285347]">{getPersonName(item.owner)}</p>
+                    </div>
+                  </div>
                   <p className="mt-2 line-clamp-3 text-sm leading-6 text-[#708178]">{item.description}</p>
-                  <button disabled={!isAuthenticated || item.status !== "available"} onClick={() => void handleRequest(item._id)} className="mt-5 h-10 w-full rounded-xl bg-[#185c46] text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#c9d6cc]">{!isAuthenticated ? "Sign in to request" : item.status === "available" ? "Request to borrow" : "Currently unavailable"}</button>
+                  {(() => {
+                    const isOwnItem = myItems.some((myItem) => myItem._id === item._id);
+                    return <button disabled={isOwnItem || !isAuthenticated || item.status !== "available"} onClick={() => void handleRequest(item._id)} className="mt-5 h-10 w-full cursor-pointer rounded-xl bg-[#185c46] text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#c9d6cc]">{isOwnItem ? "Your Item" : !isAuthenticated ? "Sign in to request" : item.status === "available" ? "Request to borrow" : "Currently unavailable"}</button>;
+                  })()}
                 </div>
               </article>
             ))}
