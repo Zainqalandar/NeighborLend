@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSyncExternalStore } from "react";
+import { usePathname } from "next/navigation";
 import {
   clearAuthToken,
   hasAuthToken,
@@ -10,12 +11,17 @@ import {
 } from "@/utils/auth";
 
 export default function Navbar() {
+  const pathname = usePathname();
   const router = useRouter();
   const isAuthenticated = useSyncExternalStore(
     subscribeToAuthChanges,
     hasAuthToken,
     () => false,
   );
+
+  const isActiveLink = (linkPath: string) => {
+    return pathname === linkPath;
+  };
 
   const handleLogout = () => {
     clearAuthToken();
@@ -38,10 +44,10 @@ export default function Navbar() {
         </Link>
 
         <nav className="hidden items-center gap-8 text-sm font-medium text-[#587067] md:flex" aria-label="Main navigation">
-          <Link href="/" className="transition-colors hover:text-[#185c46]">Home</Link>
-          <Link href="/items" className="transition-colors hover:text-[#185c46]">Browse items</Link>
-          {isAuthenticated && <Link href="/requests" className="transition-colors hover:text-[#185c46]">Requests</Link>}
-          <Link href="/#how-it-works" className="transition-colors hover:text-[#185c46]">How it works</Link>
+          <Link href="/" className={`transition-colors hover:text-[#185c46] ${isActiveLink("/") ? "text-[#185c46] bold underline" : ""} `}>Home</Link>
+          <Link href="/items" className={`transition-colors hover:text-[#185c46] ${isActiveLink("/items") ? "text-[#185c46] bold underline" : ""} `}>Browse items</Link>
+          {isAuthenticated && <Link href="/requests" className={`transition-colors hover:text-[#185c46] ${isActiveLink("/requests") ? "text-[#185c46] bold underline" : ""} `}>Requests</Link>}
+          <Link href="/how-it-works" className={`transition-colors hover:text-[#185c46] ${isActiveLink("/how-it-works") ? "text-[#185c46] bold underline" : ""} `}>How it works</Link>
         </nav>
 
         <div className="flex items-center gap-2 sm:gap-3">

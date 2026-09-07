@@ -1,19 +1,96 @@
-import Link from "next/link";
+"use client";
 
-const featuredItems = [
+import Link from "next/link";
+import React from "react";
+import api from "@/utils/axiosInstance";
+import { getPersonName, type Item } from "@/types/api";
+
+const fallbackFeaturedItems = [
   { title: "Cordless Drill Machine", category: "Power tools", owner: "Ayesha Khan", meta: "Available today", accent: "bg-[#e6f1d5]", icon: "⌁" },
   { title: "Portable Projector", category: "Electronics", owner: "Hamza Ali", meta: "Available this week", accent: "bg-[#fbe2d5]", icon: "▣" },
   { title: "Camping Tent for 4", category: "Outdoor gear", owner: "Sara Ahmed", meta: "Available today", accent: "bg-[#dcece7]", icon: "△" },
 ];
 
-const categories = [
-  { name: "Power tools", count: "42 items", icon: "↗" },
-  { name: "Home & garden", count: "36 items", icon: "⌂" },
-  { name: "Electronics", count: "28 items", icon: "◉" },
-  { name: "Outdoor gear", count: "19 items", icon: "✦" },
+const uniqueIcons = ["◉", "✦", "↗", "⌂", "◆", "♢", "⚙", "✿", "◈", "△", "□", "☼", "✧", "♧", "⬢", "☂", "★", "➤", "✚", "◌"];
+const featuredAccents = ["bg-[#e6f1d5]", "bg-[#fbe2d5]", "bg-[#dcece7]"];
+
+const defaultCategories = [
+  { name: "Power tools", count: "42 items", icon: uniqueIcons[0] },
+  { name: "Home & garden", count: "36 items", icon: uniqueIcons[1] },
+  { name: "Electronics", count: "28 items", icon: uniqueIcons[2] },
+  { name: "Outdoor gear", count: "19 items", icon: uniqueIcons[3] },
 ];
 
+const shuffle = <T,>(values: T[]) => {
+  const shuffled = [...values];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[index]];
+  }
+  return shuffled;
+};
+
 export default function Home() {
+  const [categories, setCategories] = React.useState(defaultCategories);
+  const [featuredItems, setFeaturedItems] = React.useState(fallbackFeaturedItems);
+
+  React.useEffect(() => {
+    let isMounted = true;
+
+    const loadCategories = async () => {
+      try {
+        const response = await api.get("/items", { params: { status: "all", limit: 50 } });
+        const items = Array.isArray(response.data?.data) ? (response.data.data as Item[]) : [];
+        const counts = items.reduce<Record<string, number>>((result, item) => {
+          const name = typeof item.category === "string" ? item.category.trim() : "";
+          if (name) result[name] = (result[name] || 0) + 1;
+          return result;
+        }, {});
+
+        if (!isMounted || Object.keys(counts).length === 0) return;
+
+        const databaseCategories = Object.entries(counts).map(([name, count]) => ({
+          name,
+          count: `${count} ${count === 1 ? "item" : "items"}`,
+          icon: uniqueIcons[Object.keys(counts).indexOf(name) % uniqueIcons.length],
+        }));
+        setCategories(databaseCategories.slice(0, 8));
+
+        const itemsByCategory = items.reduce<Record<string, { name: string; items: Item[] }>>((result, item) => {
+          const name = typeof item.category === "string" ? item.category.trim() : "";
+          if (!name) return result;
+          const key = name.toLowerCase();
+          if (!result[key]) result[key] = { name, items: [] };
+          result[key].items.push(item);
+          return result;
+        }, {});
+
+        const randomFeaturedItems = shuffle(Object.values(itemsByCategory))
+          .slice(0, 3)
+          .map((group, index) => {
+            const item = shuffle(group.items)[0];
+            return {
+              title: item.title,
+              category: group.name,
+              owner: getPersonName(item.owner),
+              meta: item.status === "available" ? "Available now" : item.status,
+              accent: featuredAccents[index],
+              icon: uniqueIcons[index + 8],
+            };
+          });
+
+        if (randomFeaturedItems.length > 0) setFeaturedItems(randomFeaturedItems);
+      } catch {
+        // Keep the screenshot-style fallback categories when the API is unavailable.
+      }
+    };
+
+    void loadCategories();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <main className="flex-1 overflow-hidden">
       <section className="relative mx-auto w-full max-w-7xl px-5 pb-20 pt-14 sm:px-8 sm:pt-20 lg:px-10 lg:pb-28 lg:pt-24">
@@ -23,7 +100,7 @@ export default function Home() {
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#d3e2c7] bg-[#f1f7e8] px-3.5 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#47705d]"><span className="h-2 w-2 rounded-full bg-[#e86e43]" /> Your neighborhood, connected</div>
             <h1 className="max-w-2xl text-5xl font-semibold leading-[0.98] tracking-[-0.07em] text-[#163d31] sm:text-6xl lg:text-[5.25rem]">Borrow what you need.<br /><span className="text-[#e86e43]">Share what you have</span></h1>
             <p className="mt-7 max-w-xl text-lg leading-8 text-[#63776b]">NeighborLend makes it easy to find useful things nearby, save money, and build a more helpful community.</p>
-            <div className="mt-9 flex flex-wrap items-center gap-3"><Link href="/items" className="rounded-full bg-[#185c46] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_9px_25px_rgba(24,92,70,0.2)] transition hover:-translate-y-0.5 hover:bg-[#124a38]">Explore items <span className="ml-2">↗</span></Link><Link href="/items" className="rounded-full border border-[#cbdacf] bg-white px-6 py-3.5 text-sm font-semibold text-[#285347] transition hover:border-[#185c46]">List an item</Link></div>
+            <div className="mt-9 flex flex-wrap items-center gap-3"><Link href="/items" className="rounded-full bg-[#185c46] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_9px_25px_rgba(24,92,70,0.2)] transition hover:-translate-y-0.5 hover:bg-[#124a38]">Explore items <span className="ml-2">↗</span></Link><Link href="/items" className="rounded-full border border-[#cbdacf] bg-white px-6 py-3.5 text-sm font-semibold text-[#285347] transition hover:border-[#185c46] cursor-pointer">List an item</Link></div>
             <div className="mt-12 flex items-center gap-5 border-t border-[#e0e8df] pt-6"><div className="flex -space-x-2"><span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#f8faf5] bg-[#d49f81] text-xs font-bold text-white">AK</span><span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#f8faf5] bg-[#6e9b88] text-xs font-bold text-white">HA</span><span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#f8faf5] bg-[#8b7da8] text-xs font-bold text-white">SA</span></div><p className="text-sm leading-5 text-[#718178]"><span className="font-semibold text-[#285347]">1,200+ neighbors</span><br />are already sharing locally</p></div>
           </div>
 
@@ -36,7 +113,7 @@ export default function Home() {
 
       <section id="items" className="border-y border-[#e3e9e1] bg-white/65 py-16 sm:py-20"><div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10"><div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end"><div><p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#e86e43]">Explore the community</p><h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-[#163d31] sm:text-4xl">Items people are sharing</h2></div><Link href="/#items" className="text-sm font-semibold text-[#185c46] hover:underline">View all items ↗</Link></div><div className="mt-9 grid gap-4 md:grid-cols-3">{featuredItems.map((item) => <article key={item.title} className="group rounded-3xl border border-[#e0e8df] bg-[#fbfdf9] p-4 transition hover:-translate-y-1 hover:shadow-[0_15px_30px_rgba(37,72,55,0.08)]"><div className={`flex h-44 items-center justify-center rounded-2xl ${item.accent} text-7xl text-[#47705d] transition group-hover:scale-[1.01]`}>{item.icon}</div><div className="px-1 pb-1 pt-5"><p className="text-xs font-semibold uppercase tracking-[0.13em] text-[#e86e43]">{item.category}</p><h3 className="mt-2 text-lg font-semibold text-[#163d31]">{item.title}</h3><div className="mt-4 flex items-center justify-between text-xs text-[#7a897f]"><span>By {item.owner}</span><span className="font-semibold text-[#47705d]">{item.meta}</span></div></div></article>)}</div></div></section>
 
-      <section className="mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:px-10"><div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-end"><div><p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#e86e43]">Find your category</p><h2 className="mt-3 max-w-md text-3xl font-semibold tracking-[-0.05em] text-[#163d31] sm:text-4xl">A little sharing goes a long way.</h2></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{categories.map((category) => <Link href="/#items" key={category.name} className="rounded-2xl border border-[#dfe8df] bg-white p-5 transition hover:border-[#a9c1a9] hover:bg-[#f5faef]"><span className="text-2xl text-[#e86e43]">{category.icon}</span><p className="mt-7 text-sm font-semibold text-[#285347]">{category.name}</p><p className="mt-1 text-xs text-[#86948a]">{category.count}</p></Link>)}</div></div></section>
+      <section className="mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:px-10"><div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-end"><div><p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#e86e43]">Find your category</p><h2 className="mt-3 max-w-md text-3xl font-semibold tracking-[-0.05em] text-[#163d31] sm:text-4xl">A little sharing goes a long way.</h2></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{categories.map((category) => <Link href={`/items?category=${encodeURIComponent(category.name)}`} key={category.name} className="rounded-2xl border border-[#dfe8df] bg-white p-5 transition hover:border-[#a9c1a9] hover:bg-[#f5faef]"><span className="text-2xl text-[#e86e43]">{category.icon}</span><p className="mt-7 text-sm font-semibold text-[#285347]">{category.name}</p><p className="mt-1 text-xs text-[#86948a]">{category.count}</p></Link>)}</div></div></section>
 
       <section id="how-it-works" className="bg-[#185c46] py-16 text-white sm:py-20"><div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10"><div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end"><div><p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#dfff88]">Simple by design</p><h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em] sm:text-4xl">How NeighborLend works</h2></div><p className="max-w-sm text-sm leading-6 text-[#cbe0d2]">From a one-time borrow to a new neighborhood connection, it starts with three simple steps.</p></div><div className="mt-12 grid gap-8 md:grid-cols-3">{[{number:"01",title:"Find what you need",text:"Browse useful items shared by people close to you."},{number:"02",title:"Send a request",text:"Ask to borrow an item and agree on the details."},{number:"03",title:"Share the good",text:"Return it on time and keep the sharing cycle going."}].map((step) => <div key={step.number} className="border-t border-white/20 pt-5"><p className="text-sm font-semibold text-[#dfff88]">{step.number}</p><h3 className="mt-5 text-xl font-semibold">{step.title}</h3><p className="mt-3 max-w-xs text-sm leading-6 text-[#cbe0d2]">{step.text}</p></div>)}</div></div></section>
     </main>

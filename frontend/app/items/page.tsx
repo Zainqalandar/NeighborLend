@@ -34,12 +34,14 @@ export default function ItemsPage() {
   const [myItems, setMyItems] = React.useState<Item[]>([]);
   const [search, setSearch] = React.useState("");
   const [category, setCategory] = React.useState("");
+  const [categoryReady, setCategoryReady] = React.useState(false);
   const [searchInput, setSearchInput] = React.useState("");
   const [form, setForm] = React.useState<ItemForm>(emptyForm);
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [enhancing, setEnhancing] = React.useState(false);
+  const [isFormOpen, setIsFormOpen] = React.useState(false);
 
   const loadItems = React.useCallback(async () => {
     setLoading(true);
@@ -70,8 +72,15 @@ export default function ItemsPage() {
   }, [isAuthenticated, notifyError]);
 
   React.useEffect(() => {
+    if (!categoryReady) return;
     void loadItems();
-  }, [loadItems]);
+  }, [categoryReady, loadItems]);
+
+  React.useEffect(() => {
+    const categoryFromUrl = new URLSearchParams(window.location.search).get("category")?.trim();
+    setCategory(categoryFromUrl || "");
+    setCategoryReady(true);
+  }, []);
 
   React.useEffect(() => {
     void loadMyItems();
@@ -95,6 +104,7 @@ export default function ItemsPage() {
       }
       setForm(emptyForm);
       setEditingId(null);
+      setIsFormOpen(false);
       await Promise.all([loadItems(), loadMyItems()]);
     } catch (error) {
       notifyError(getApiErrorMessage(error, "Could not save this item."));
@@ -144,6 +154,37 @@ export default function ItemsPage() {
     }
   };
 
+  const openCreateForm = () => {
+    setEditingId(null);
+    setForm(emptyForm);
+    setEnhancing(false);
+    setIsFormOpen(true);
+  };
+
+  const closeForm = () => {
+    if (saving) return;
+    setIsFormOpen(false);
+    setEditingId(null);
+    setForm(emptyForm);
+    setEnhancing(false);
+  };
+
+  React.useEffect(() => {
+    if (!isFormOpen) return;
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeForm();
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [isFormOpen, saving]);
+
   const startEditing = (item: Item) => {
     setEditingId(item._id);
     setForm({
@@ -152,7 +193,8 @@ export default function ItemsPage() {
       category: item.category,
       imageUrl: item.imageUrl,
     });
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setEnhancing(false);
+    setIsFormOpen(true);
   };
 
   return (
@@ -164,18 +206,24 @@ export default function ItemsPage() {
             <h1 className="mt-3 text-4xl font-semibold tracking-[-0.05em] text-[#163d31]">Find useful things nearby</h1>
             <p className="mt-3 max-w-2xl text-[#708178]">Browse items shared by your neighbors or list something you are happy to lend.</p>
           </div>
-          {isAuthenticated ? <Link href="/requests" className="rounded-full bg-[#185c46] px-5 py-3 text-center text-sm font-semibold text-white">View my requests</Link> : <Link href="/signin" className="rounded-full bg-[#185c46] px-5 py-3 text-center text-sm font-semibold text-white">Sign in to borrow</Link>}
+          {isAuthenticated ? (
+            <div className="flex flex-wrap gap-3">
+              <button type="button" onClick={openCreateForm} className="rounded-full bg-[#e86e43] px-5 py-3 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-[#d95f36]">+ List an item</button>
+              <Link href="/requests" className="rounded-full bg-[#185c46] px-5 py-3 text-center text-sm font-semibold text-white">View my requests</Link>
+            </div>
+          ) : <Link href="/signin" className="rounded-full bg-[#185c46] px-5 py-3 text-center text-sm font-semibold text-white">Sign in to borrow</Link>}
         </div>
 
-        {isAuthenticated && (
-          <section className="mt-10 rounded-3xl border border-[#dfe8df] bg-white p-6 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.14em] text-[#e86e43]">{editingId ? "Edit item" : "List an item"}</p>
-                <h2 className="mt-2 text-2xl font-semibold text-[#163d31]">Share something useful</h2>
+        {isAuthenticated && isFormOpen && (
+          <div role="dialog" aria-modal="true" aria-labelledby="item-form-title" className="fixed inset-0 z-[60] flex items-center justify-center bg-[#163d31]/45 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) closeForm(); }}>
+            <section className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-[#dfe8df] bg-white p-6 shadow-2xl sm:p-8">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.14em] text-[#e86e43]">{editingId ? "Edit item" : "List an item"}</p>
+                  <h2 id="item-form-title" className="mt-2 text-2xl font-semibold text-[#163d31]">{editingId ? "Update your item" : "Share something useful"}</h2>
+                </div>
+                <button type="button" onClick={closeForm} disabled={saving} aria-label="Close form" className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f1f7e8] text-xl text-[#285347] transition hover:bg-[#e4f1cb] disabled:cursor-not-allowed disabled:opacity-50">×</button>
               </div>
-              {editingId && <button type="button" onClick={() => { setEditingId(null); setForm(emptyForm); }} className="text-sm font-semibold text-[#185c46]">Cancel edit</button>}
-            </div>
             <form onSubmit={handleSubmitItem} className="mt-5 grid gap-4 md:grid-cols-2">
               <input required name="title" value={form.title} onChange={handleFormChange} placeholder="Item title" className="h-12 rounded-xl border border-[#d6e1d8] px-4 outline-none focus:border-[#185c46]" />
               <input required name="category" value={form.category} onChange={handleFormChange} placeholder="Category (e.g. Electronics)" className="h-12 rounded-xl border border-[#d6e1d8] px-4 outline-none focus:border-[#185c46]" />
@@ -187,16 +235,20 @@ export default function ItemsPage() {
                   {enhancing ? "Enhancing..." : "✨ Auto-enhance description"}
                 </button>
               </div>
-              <button disabled={saving} type="submit" className="h-12 rounded-xl cursor-pointer bg-[#185c46] text-sm font-semibold text-white disabled:opacity-60 md:col-span-2">{saving ? "Saving..." : editingId ? "Update item" : "List item"}</button>
+              <div className="flex flex-col-reverse gap-3 sm:col-span-2 sm:flex-row sm:justify-end">
+                <button type="button" onClick={closeForm} disabled={saving} className="h-12 rounded-xl border border-[#cddbd0] px-5 text-sm font-semibold text-[#285347] transition hover:bg-[#f5faef] disabled:cursor-not-allowed disabled:opacity-50">Cancel</button>
+                <button disabled={saving} type="submit" className="h-12 rounded-xl cursor-pointer bg-[#185c46] px-5 text-sm font-semibold text-white transition hover:bg-[#124a38] disabled:cursor-not-allowed disabled:opacity-60">{saving ? "Saving..." : editingId ? "Update item" : "List item"}</button>
+              </div>
             </form>
-          </section>
+            </section>
+          </div>
         )}
 
         <section className="mt-10">
           <form onSubmit={(event) => { event.preventDefault(); setSearch(searchInput.trim()); }} className="flex flex-col gap-3 sm:flex-row">
             <input value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="Search items..." className="h-12 flex-1 rounded-xl border border-[#d6e1d8] bg-white px-4 outline-none focus:border-[#185c46]" />
             <input value={category} onChange={(event) => setCategory(event.target.value)} placeholder="Filter category" className="h-12 rounded-xl border border-[#d6e1d8] bg-white px-4 outline-none focus:border-[#185c46] sm:w-56" />
-            <button type="submit" className="h-12 rounded-xl bg-[#e86e43] px-6 text-sm font-semibold text-white">Search</button>
+            <button type="submit" className="h-12 rounded-xl bg-[#e86e43] px-6 text-sm font-semibold text-white cursor-pointer">Search</button>
           </form>
 
           <div className="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -228,7 +280,7 @@ export default function ItemsPage() {
           <section className="mt-14 rounded-3xl border border-[#dfe8df] bg-white p-6">
             <h2 className="text-2xl font-semibold text-[#163d31]">Your listed items</h2>
             <div className="mt-5 divide-y divide-[#edf0e9]">
-              {myItems.map((item) => <div key={item._id} className="flex flex-wrap items-center justify-between gap-3 py-4"><div><p className="font-semibold text-[#285347]">{item.title}</p><p className="text-sm text-[#708178]">{item.category} · {item.status}</p></div><div className="flex gap-2"><button type="button" onClick={() => startEditing(item)} className="rounded-lg border border-[#cddbd0] px-3 py-2 text-sm font-semibold text-[#285347]">Edit</button><button type="button" onClick={() => void handleDelete(item._id)} className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600">Delete</button></div></div>)}
+              {myItems.map((item) => <div key={item._id} className="flex flex-wrap items-center justify-between gap-3 py-4"><div><p className="font-semibold text-[#285347]">{item.title}</p><p className="text-sm text-[#708178]">{item.category} · {item.status}</p></div><div className="flex gap-2"><button type="button" onClick={() => startEditing(item)} className="rounded-lg border border-[#cddbd0] px-3 py-2 text-sm font-semibold text-[#285347] cursor-pointer">Edit</button><button type="button" onClick={() => void handleDelete(item._id)} className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 cursor-pointer">Delete</button></div></div>)}
             </div>
           </section>
         )}
