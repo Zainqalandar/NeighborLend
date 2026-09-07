@@ -1,36 +1,113 @@
 "use client";
 import Link from "next/link";
 import React from "react";
+import axios from "axios";
+import { useRouter } from "next/navigation";
 import api from "../../utils/axiosInstance";
 import { useNotification } from "@/context/notification-context";
+
+type FormData = {
+  name: string;
+  email: string;
+  password: string;
+};
+
+type FieldErrors = Partial<Record<keyof FormData, string>>;
+
+function getErrorMessage(error: unknown): string {
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data;
+
+    if (typeof data === "string") {
+      return data;
+    }
+
+    if (data && typeof data === "object") {
+      const responseData = data as {
+        message?: unknown;
+        error?: unknown;
+        errors?: unknown;
+      };
+
+      if (typeof responseData.message === "string") {
+        return responseData.message;
+      }
+
+      if (typeof responseData.error === "string") {
+        return responseData.error;
+      }
+
+      if (Array.isArray(responseData.errors)) {
+        const messages = responseData.errors
+          .map((item) => {
+            if (typeof item === "string") return item;
+            if (item && typeof item === "object" && "message" in item) {
+              const message = (item as { message?: unknown }).message;
+              return typeof message === "string" ? message : null;
+            }
+            return null;
+          })
+          .filter((message): message is string => Boolean(message));
+
+        if (messages.length > 0) {
+          return messages.join(", ");
+        }
+      }
+    }
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return "Sign-up failed. Please try again.";
+}
+
 export default function SignUpPage() {
-  const {  success, error: NotiError } = useNotification();
+  const router = useRouter();
+  const { success, error: notifyError } = useNotification();
   const [loading, setLoading] = React.useState(false);
-  const [formData, setFormData] = React.useState({
+  const [formData, setFormData] = React.useState<FormData>({
     name: "",
     email: "",
     password: "",
   });
+  const [fieldErrors, setFieldErrors] = React.useState<FieldErrors>({});
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
-    console.log(`Input changed: ${name} = ${value}`);
     setFormData((prevData) => ({
       ...prevData,
       [name]: value,
     }));
+    setFieldErrors((prevErrors) => ({
+      ...prevErrors,
+      [name]: undefined,
+    }));
   };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    // Handle form submission logic here
+
+    const requiredErrors: FieldErrors = {};
+    if (!formData.name.trim()) requiredErrors.name = "Full name is required";
+    if (!formData.email.trim()) requiredErrors.email = "Email address is required";
+    if (!formData.password) requiredErrors.password = "Password is required";
+
+    if (Object.keys(requiredErrors).length > 0) {
+      setFieldErrors(requiredErrors);
+      notifyError("Please fill in all required fields.");
+      return;
+    }
+
+    setFieldErrors({});
     setLoading(true);
     try {
-      const response = await api.post("/auth/register", formData);
-      console.log("Sign-up successful:", response.data);
+      await api.post("/auth/register", formData);
       success("Account created successfully!");
+      router.push("/signin");
     } catch (error) {
-      console.error("Sign-up failed:", error.message);
-      NotiError("Sign-up failed. Please try again.");
+      notifyError(getErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -75,36 +152,63 @@ export default function SignUpPage() {
               Start sharing useful things with people around you.
             </p>
 
-            <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+            <form onSubmit={handleSubmit} noValidate className="mt-8 space-y-4">
               <label className="block text-sm font-semibold text-[#285347]">
                 Full name
                 <input
+                  id="name"
                   onChange={handleChange}
                   name="name"
                   type="text"
+                  required
+                  aria-invalid={Boolean(fieldErrors.name)}
+                  aria-describedby={fieldErrors.name ? "name-error" : undefined}
                   placeholder="Ayesha Khan"
-                  className="mt-2 h-12 w-full rounded-xl border border-[#d6e1d8] bg-[#fbfdf9] px-4 text-sm font-normal text-[#163d31] outline-none transition placeholder:text-[#a5b3aa] focus:border-[#185c46] focus:ring-4 focus:ring-[#185c46]/10"
+                  className={`mt-2 h-12 w-full rounded-xl border bg-[#fbfdf9] px-4 text-sm font-normal text-[#163d31] outline-none transition placeholder:text-[#a5b3aa] focus:border-[#185c46] focus:ring-4 focus:ring-[#185c46]/10 ${fieldErrors.name ? "border-red-500" : "border-[#d6e1d8]"}`}
                 />
+                {fieldErrors.name && (
+                  <p id="name-error" className="mt-1 text-xs font-normal text-red-600">
+                    {fieldErrors.name}
+                  </p>
+                )}
               </label>
               <label className="block text-sm font-semibold text-[#285347]">
                 Email address
                 <input
+                  id="email"
                   onChange={handleChange}
                   name="email"
                   type="email"
+                  required
+                  aria-invalid={Boolean(fieldErrors.email)}
+                  aria-describedby={fieldErrors.email ? "email-error" : undefined}
                   placeholder="ayesha@example.com"
-                  className="mt-2 h-12 w-full rounded-xl border border-[#d6e1d8] bg-[#fbfdf9] px-4 text-sm font-normal text-[#163d31] outline-none transition placeholder:text-[#a5b3aa] focus:border-[#185c46] focus:ring-4 focus:ring-[#185c46]/10"
+                  className={`mt-2 h-12 w-full rounded-xl border bg-[#fbfdf9] px-4 text-sm font-normal text-[#163d31] outline-none transition placeholder:text-[#a5b3aa] focus:border-[#185c46] focus:ring-4 focus:ring-[#185c46]/10 ${fieldErrors.email ? "border-red-500" : "border-[#d6e1d8]"}`}
                 />
+                {fieldErrors.email && (
+                  <p id="email-error" className="mt-1 text-xs font-normal text-red-600">
+                    {fieldErrors.email}
+                  </p>
+                )}
               </label>
               <label className="block text-sm font-semibold text-[#285347]">
                 Password
                 <input
+                  id="password"
                   onChange={handleChange}
                   name="password"
                   type="password"
+                  required
+                  aria-invalid={Boolean(fieldErrors.password)}
+                  aria-describedby={fieldErrors.password ? "password-error" : undefined}
                   placeholder="At least 6 characters"
-                  className="mt-2 h-12 w-full rounded-xl border border-[#d6e1d8] bg-[#fbfdf9] px-4 text-sm font-normal text-[#163d31] outline-none transition placeholder:text-[#a5b3aa] focus:border-[#185c46] focus:ring-4 focus:ring-[#185c46]/10"
+                  className={`mt-2 h-12 w-full rounded-xl border bg-[#fbfdf9] px-4 text-sm font-normal text-[#163d31] outline-none transition placeholder:text-[#a5b3aa] focus:border-[#185c46] focus:ring-4 focus:ring-[#185c46]/10 ${fieldErrors.password ? "border-red-500" : "border-[#d6e1d8]"}`}
                 />
+                {fieldErrors.password && (
+                  <p id="password-error" className="mt-1 text-xs font-normal text-red-600">
+                    {fieldErrors.password}
+                  </p>
+                )}
               </label>
               <button
                 type="submit"

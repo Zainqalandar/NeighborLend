@@ -1,6 +1,27 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useSyncExternalStore } from "react";
+import {
+  clearAuthToken,
+  hasAuthToken,
+  subscribeToAuthChanges,
+} from "@/utils/auth";
 
 export default function Navbar() {
+  const router = useRouter();
+  const isAuthenticated = useSyncExternalStore(
+    subscribeToAuthChanges,
+    hasAuthToken,
+    () => false,
+  );
+
+  const handleLogout = () => {
+    clearAuthToken();
+    router.replace("/signin");
+  };
+
   return (
     <header className="sticky top-0 z-50 border-b border-[#dfe7df]/80 bg-[#f8faf5]/90 backdrop-blur-xl">
       <div className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-10">
@@ -23,15 +44,20 @@ export default function Navbar() {
         </nav>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          <Link href="/signin" className="hidden rounded-full px-3 py-2 text-sm font-semibold text-[#285347] transition-colors hover:bg-[#eaf1e9] sm:inline-flex">
-            Sign in
-          </Link>
-          <Link href="/signup" className="rounded-full bg-[#185c46] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_7px_18px_rgba(24,92,70,0.18)] transition-all hover:-translate-y-0.5 hover:bg-[#124a38]">
-            Sign up
-          </Link>
-          <button type="button" className="rounded-full border border-[#cddbd0] px-3.5 py-2 text-sm font-semibold text-[#285347] transition-colors hover:border-[#185c46] hover:bg-white">
-            Logout
-          </button>
+          {isAuthenticated ? (
+            <button type="button" onClick={handleLogout} className="rounded-full border border-[#cddbd0] px-3.5 py-2 text-sm font-semibold text-[#285347] transition-colors hover:border-[#185c46] hover:bg-white">
+              Logout
+            </button>
+          ) : (
+            <>
+              <Link href="/signin" className="hidden rounded-full px-3 py-2 text-sm font-semibold text-[#285347] transition-colors hover:bg-[#eaf1e9] sm:inline-flex">
+                Sign in
+              </Link>
+              <Link href="/signup" className="rounded-full bg-[#185c46] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_7px_18px_rgba(24,92,70,0.18)] transition-all hover:-translate-y-0.5 hover:bg-[#124a38]">
+                Sign up
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </header>

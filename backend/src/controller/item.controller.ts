@@ -24,7 +24,19 @@ const getRouteParam = (req: Request, name: string) => {
 
 const isValidItemId = (id: string) => mongoose.Types.ObjectId.isValid(id);
 
-// GET /api/items?search=drill&category=Power%20Tools&status=available&page=1&limit=10
+// pagination and filtering example: /api/items?search=drill&category=Power%20Tools&status=available&page=1&limit=10
+// export const getItems = async (req, res) => {
+//   const page = Number(req.query.page) || 1;
+//   const limit = Number(req.query.limit) || 10;
+
+//   const skip = (page - 1) * limit;
+
+//   const items = await Item.find()
+//     .skip(skip)
+//     .limit(limit);
+
+//   res.json(items);
+// };
 const getAllItems = async (req: Request, res: Response) => {
   try {
     const category = typeof req.query.category === "string" ? req.query.category.trim() : undefined;
@@ -43,13 +55,13 @@ const getAllItems = async (req: Request, res: Response) => {
     const filter: Record<string, unknown> = {};
     if (!status || status !== "all") filter.status = status || "available";
     if (category) filter.category = category;
+    // For search
     if (search) {
       filter.$or = [
         { title: { $regex: search, $options: "i" } },
         { description: { $regex: search, $options: "i" } },
       ];
     }
-
     const [items, total] = await Promise.all([
       Item.find(filter)
         .populate("owner", "name email phone address")
