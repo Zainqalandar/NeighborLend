@@ -4,7 +4,10 @@
   "description": "This is Purley MERN Stack Practice Project",
   "main": "server.js",
   "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "typecheck": "tsc --noEmit",
     "seed:items": "ts-node --transpile-only src/scripts/seed-items.ts"
   },
   "author": "Syed Zain Qalandar",
