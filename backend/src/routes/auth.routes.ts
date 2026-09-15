@@ -1,9 +1,9 @@
 
-import express from "express";
+import { Router } from 'express';
 import { register, login } from "../controller/auth.controller";
 
 
-const router = express.Router();
+const router = Router();
 
 
 

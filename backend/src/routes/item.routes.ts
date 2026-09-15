@@ -1,10 +1,10 @@
 
-import express from 'express'
+import { Router } from 'express';
 
 import { getAllItems, getMyItems, getItemById, createItem, updateItem, deleteItem, enhanceItemDescription } from "../controller/item.controller";
 import protect from "../middleware/auth.middleware";
 
-const routes = express.Router();
+const routes = Router();
 
 routes.get('/', getAllItems);
 routes.get('/mine', protect, getMyItems);

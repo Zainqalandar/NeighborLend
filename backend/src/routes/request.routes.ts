@@ -1,4 +1,4 @@
-import express from "express";
+import { Router } from 'express';
 import protect from "../middleware/auth.middleware";
 import {
   createRequest,
@@ -9,7 +9,7 @@ import {
   returnRequest,
 } from "../controller/request.controller";
 
-const routes = express.Router();
+const routes = Router();
 
 routes.post("/", protect, createRequest);
 routes.get("/my-requests", protect, getMyRequests);
